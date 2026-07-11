@@ -6,6 +6,7 @@ const STATISTICS_URL = "/back/products_moving";
 
 const MIN_COLUMN_WIDTH = 8;
 const DEFAULT_HIGHLIGHT_COLOR = "#fff2a8";
+const REQUEST_TIMER_INTERVAL = 100;
 
 const supplierMetricColumns = [
   { key: "brand", label: "Бренд", type: "text" },
@@ -35,102 +36,6 @@ const baseColumns = [
   { key: "total_current_stock", label: "Текущий остаток", type: "number", sortable: true },
 ];
 
-const mockCategories = {
-  items: ["electronics", "books", "smartphones"],
-};
-
-const mockSuppliers = {
-  items: [
-    { id: 1, name: "Supplier One" },
-    { id: 2, name: "Supplier Two" },
-    { id: 3, name: "Supplier Three" },
-  ],
-};
-
-const mockStatistics = {
-  items: [
-    {
-      brand: "Apple",
-      articul: "IPH15-128-BLK",
-      category: "smartphones",
-      names: "iPhone 15 128GB Black",
-      suppliers_stat: [
-        {
-          brand: "Apple",
-          articul: "IPH15-128-BLK",
-          sup_name: "Supplier One",
-          uploads: 25,
-          diffstat: 3,
-          stock_dispersion: 5.42,
-          stock_avg: 120.5,
-          stock_avg_nozeroes: 130.7,
-          price_avg: 79990.5,
-          price_min: 77990,
-          stock_current: 118,
-          price_current: 78990,
-        },
-        {
-          brand: "Apple",
-          articul: "IPH15-128-BLK",
-          sup_name: "Supplier Two",
-          uploads: 18,
-          diffstat: 1,
-          stock_dispersion: 3.15,
-          stock_avg: 95.2,
-          stock_avg_nozeroes: 97.8,
-          price_avg: 80150,
-          price_min: 79500,
-          stock_current: 96,
-          price_current: 79990,
-        },
-      ],
-    },
-    {
-      brand: "Samsung",
-      articul: "SM-S25-256",
-      category: "smartphones",
-      names: "Samsung Galaxy S25 256GB",
-      suppliers_stat: [
-        {
-          brand: "Samsung",
-          articul: "SM-S25-256",
-          sup_name: "Supplier One",
-          uploads: 30,
-          diffstat: 2,
-          stock_dispersion: 7.8,
-          stock_avg: 210.4,
-          stock_avg_nozeroes: 214.6,
-          price_avg: 68990,
-          price_min: 67990,
-          stock_current: 205,
-          price_current: 68490,
-        },
-        {
-          brand: "Samsung",
-          articul: "SM-S25-256",
-          sup_name: "Supplier Two",
-          uploads: 12,
-          diffstat: -1,
-          stock_dispersion: 2.7,
-          stock_avg: 88.1,
-          stock_avg_nozeroes: 90,
-          price_avg: 69200,
-          price_min: 0,
-          stock_current: 84,
-          price_current: 68120,
-        },
-      ],
-    },
-  ],
-  date_from: 1751328000,
-  date_to: 1751932799,
-  category: "smartphones",
-  suppliers: [
-    { id: 1, name: "Supplier One" },
-    { id: 2, name: "Supplier Two" },
-  ],
-};
-
 const state = {
   categories: [],
   suppliers: [],
@@ -142,6 +47,10 @@ const state = {
   sort: { key: null, direction: "asc" },
   columnWidths: new Map(),
   resizing: null,
+  requestTimer: {
+    startedAt: null,
+    intervalId: null,
+  },
 };
 
 const els = {
@@ -163,6 +72,8 @@ const els = {
   formError: document.querySelector("#formError"),
   statusPanel: document.querySelector("#statusPanel"),
   statusText: document.querySelector("#statusText"),
+  statusTime: document.querySelector("#statusTime"),
+  statusCode: document.querySelector("#statusCode"),
   highlightButton: document.querySelector("#highlightButton"),
   highlightMenu: document.querySelector("#highlightMenu"),
   tableHead: document.querySelector("#tableHead"),
@@ -223,8 +134,8 @@ function closeRequestDialog() {
 async function loadFilters() {
   try {
     const [categoriesResponse, suppliersResponse] = await Promise.all([
-      fetchJson(CATEGORIES_URL, mockCategories),
-      fetchJson(SUPPLIERS_URL, mockSuppliers),
+      fetchJson(CATEGORIES_URL),
+      fetchJson(SUPPLIERS_URL),
     ]);
 
     state.categories = Array.isArray(categoriesResponse.items) ? categoriesResponse.items : [];
@@ -311,12 +222,16 @@ async function handleRequestSubmit(event) {
 
   closeRequestDialog();
   setStatus("Загрузка данных...");
+  startRequestTimer();
+  setStatusCode(null);
   els.saveCsvButton.disabled = true;
 
   try {
-    const response = await postJson(STATISTICS_URL, requestBody, createMockStatistics(requestBody));
-    applyStatisticsResponse(response);
+    const { data, status } = await requestStatistics(requestBody);
+    finishRequestTimer(status);
+    applyStatisticsResponse(data);
   } catch (error) {
+    finishRequestTimer(error.status ?? null);
     setStatus("Не удалось получить данные статистики.", true);
   }
 }
@@ -657,6 +572,47 @@ function setStatus(message, isError = false, showActions = false) {
   }
 }
 
+function startRequestTimer() {
+  stopRequestTimer();
+  state.requestTimer.startedAt = performance.now();
+  updateStatusTime(0);
+  state.requestTimer.intervalId = window.setInterval(() => {
+    updateStatusTime(performance.now() - state.requestTimer.startedAt);
+  }, REQUEST_TIMER_INTERVAL);
+}
+
+function finishRequestTimer(status) {
+  const startedAt = state.requestTimer.startedAt;
+  stopRequestTimer();
+  if (startedAt !== null) {
+    updateStatusTime(performance.now() - startedAt);
+  }
+  setStatusCode(status);
+}
+
+function stopRequestTimer() {
+  if (state.requestTimer.intervalId !== null) {
+    window.clearInterval(state.requestTimer.intervalId);
+  }
+  state.requestTimer.startedAt = null;
+  state.requestTimer.intervalId = null;
+}
+
+function updateStatusTime(elapsedMs) {
+  els.statusTime.textContent = formatRequestDuration(elapsedMs);
+}
+
+function setStatusCode(status) {
+  els.statusCode.textContent = Number.isInteger(status) ? String(status) : "-";
+}
+
+function formatRequestDuration(elapsedMs) {
+  if (elapsedMs < 1000) {
+    return `${Math.round(elapsedMs)} мс`;
+  }
+  return `${(elapsedMs / 1000).toFixed(1).replace(".", ",")} с`;
+}
+
 function toggleCsvMenu(event) {
   event.stopPropagation();
   if (els.saveCsvButton.disabled) return;
@@ -889,17 +845,34 @@ function formatDateForFile(timestamp) {
   return `${year}-${month}-${day}`;
 }
 
-async function fetchJson(url, fallback) {
-  if (!url) {
-    return structuredClone(fallback);
+async function fetchJson(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
+async function requestStatistics(body) {
+  const response = await fetch(STATISTICS_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const status = response.status;
+
+  if (!response.ok) {
+    const error = new Error(`HTTP ${status}`);
+    error.status = status;
+    throw error;
   }
 
   try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return response.json();
+    return {
+      data: await response.json(),
+      status,
+    };
   } catch (error) {
-    return structuredClone(fallback);
+    error.status = status;
+    throw error;
   }
 }
 
@@ -919,26 +892,6 @@ async function postJson(url, body, fallback) {
   } catch (error) {
     return structuredClone(fallback);
   }
-}
-
-function createMockStatistics(requestBody) {
-  const selectedSuppliers = mockSuppliers.items.filter((supplier) => requestBody.suppliers.includes(supplier.id));
-  const supplierIndexes = selectedSuppliers.map((supplier) =>
-    mockStatistics.suppliers.findIndex((item) => item.id === supplier.id)
-  );
-
-  return {
-    ...structuredClone(mockStatistics),
-    date_from: requestBody.date_from,
-    date_to: requestBody.date_to,
-    category: requestBody.category,
-    suppliers: selectedSuppliers,
-    items: mockStatistics.items.map((item) => ({
-      ...structuredClone(item),
-      category: requestBody.category,
-      suppliers_stat: supplierIndexes.map((index) => (index >= 0 ? structuredClone(item.suppliers_stat[index]) : null)),
-    })),
-  };
 }
 
 function toDateInputValue(date) {

@@ -47,6 +47,16 @@
     <main class="page-shell">
       <section class="status-panel" id="statusPanel">
         <span id="statusText">Данные еще не запрашивались.</span>
+        <div class="status-metrics" aria-label="Параметры ответа">
+          <span class="status-metric">
+            <span class="status-metric-label">Время</span>
+            <span id="statusTime" class="status-metric-value">-</span>
+          </span>
+          <span class="status-metric">
+            <span class="status-metric-label">Код</span>
+            <span id="statusCode" class="status-metric-value">-</span>
+          </span>
+        </div>
       </section>
 
       <section class="table-shell" aria-label="Таблица статистики">

@@ -252,6 +252,46 @@ input[type="date"] {
   min-width: 0;
 }
 
+.status-metrics {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.status-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-soft);
+  white-space: nowrap;
+}
+
+.status-metric-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.status-metric-value {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.status-panel.error .status-metric {
+  border-color: #f3b8b0;
+  background: #fff;
+}
+
+.status-panel.error .status-metric-value {
+  color: var(--danger);
+}
+
 .highlight-menu {
   min-width: 310px;
   max-height: 360px;
@@ -554,6 +594,10 @@ input[type="date"] {
   .status-panel {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .status-metrics {
+    justify-content: flex-start;
   }
 
   .highlight-menu {
