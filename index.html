@@ -4,15 +4,19 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Статистика движения товара</title>
+    <link rel="icon" type="image/webp" href="./hotline_pig.webp">
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
     <header class="app-header">
-      <div class="header-title">
-        <h1>Статистика движения товара</h1>
-        <div class="header-meta" aria-live="polite">
-          <span id="periodLabel">Период: не выбран</span>
-          <span id="categoryLabel">Категория: не выбрана</span>
+      <div class="header-brand">
+        <img class="header-logo" src="./hotline_pig.webp" alt="">
+        <div class="header-title">
+          <h1>Статистика движения товара</h1>
+          <div class="header-meta" aria-live="polite">
+            <span id="periodLabel">Период: не выбран</span>
+            <span id="categoryLabel">Категория: не выбрана</span>
+          </div>
         </div>
       </div>
 
@@ -23,12 +27,26 @@
             <option>Нет данных</option>
           </select>
         </label>
+        <div class="dropdown">
+          <button id="saveCsvButton" class="secondary-button" type="button" disabled>Сохранить CSV</button>
+          <div id="csvMenu" class="dropdown-menu" hidden>
+            <button type="button" data-export-mode="raw">raw</button>
+            <button type="button" data-export-mode="edited">edited</button>
+            <button type="button" data-export-mode="edited-highlighted">edited highlighted</button>
+          </div>
+        </div>
         <button id="openRequestModal" class="primary-button" type="button">Запросить данные</button>
       </div>
     </header>
 
     <main class="page-shell">
-      <section class="status-panel" id="statusPanel">Данные еще не запрашивались.</section>
+      <section class="status-panel" id="statusPanel">
+        <span id="statusText">Данные еще не запрашивались.</span>
+        <div class="highlight-control">
+          <button id="highlightButton" class="secondary-button small-button" type="button" hidden>Выделить</button>
+          <div id="highlightMenu" class="highlight-menu" hidden></div>
+        </div>
+      </section>
 
       <section class="table-shell" aria-label="Таблица статистики">
         <div class="table-scroll">

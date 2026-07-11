@@ -4,8 +4,8 @@ const CATEGORIES_URL = "";
 const SUPPLIERS_URL = "";
 const STATISTICS_URL = "";
 
-const TEXT_MIN_WIDTH = 120;
-const NUMBER_MIN_WIDTH = 80;
+const MIN_COLUMN_WIDTH = 8;
+const DEFAULT_HIGHLIGHT_COLOR = "#fff2a8";
 
 const supplierMetricColumns = [
   { key: "brand", label: "Бренд", type: "text" },
@@ -137,6 +137,8 @@ const state = {
   response: null,
   rows: [],
   disabledSuppliers: new Set(),
+  selectedRows: new Set(),
+  columnHighlights: new Map(),
   sort: { key: null, direction: "asc" },
   columnWidths: new Map(),
   resizing: null,
@@ -146,6 +148,8 @@ const els = {
   periodLabel: document.querySelector("#periodLabel"),
   categoryLabel: document.querySelector("#categoryLabel"),
   headerSuppliers: document.querySelector("#headerSuppliers"),
+  saveCsvButton: document.querySelector("#saveCsvButton"),
+  csvMenu: document.querySelector("#csvMenu"),
   openRequestModal: document.querySelector("#openRequestModal"),
   requestDialog: document.querySelector("#requestDialog"),
   closeRequestModal: document.querySelector("#closeRequestModal"),
@@ -157,6 +161,9 @@ const els = {
   dateTo: document.querySelector("#dateTo"),
   formError: document.querySelector("#formError"),
   statusPanel: document.querySelector("#statusPanel"),
+  statusText: document.querySelector("#statusText"),
+  highlightButton: document.querySelector("#highlightButton"),
+  highlightMenu: document.querySelector("#highlightMenu"),
   tableHead: document.querySelector("#tableHead"),
   tableBody: document.querySelector("#tableBody"),
 };
@@ -180,10 +187,14 @@ function init() {
 
 function bindEvents() {
   els.openRequestModal.addEventListener("click", openRequestDialog);
+  els.saveCsvButton.addEventListener("click", toggleCsvMenu);
+  els.csvMenu.addEventListener("click", handleCsvMenuClick);
+  els.highlightButton.addEventListener("click", toggleHighlightMenu);
   els.closeRequestModal.addEventListener("click", closeRequestDialog);
   els.cancelRequest.addEventListener("click", closeRequestDialog);
   els.requestForm.addEventListener("submit", handleRequestSubmit);
 
+  document.addEventListener("click", closeFloatingMenus);
   document.addEventListener("mousemove", handleResizeMove);
   document.addEventListener("mouseup", stopResize);
 }
@@ -297,6 +308,7 @@ async function handleRequestSubmit(event) {
 
   closeRequestDialog();
   setStatus("Загрузка данных...");
+  els.saveCsvButton.disabled = true;
 
   try {
     const response = await postJson(STATISTICS_URL, requestBody, createMockStatistics(requestBody));
@@ -314,15 +326,18 @@ function applyStatisticsResponse(response) {
   };
   state.rows = [...state.response.items];
   state.disabledSuppliers = new Set();
+  state.selectedRows = new Set();
+  state.columnHighlights = new Map();
   state.sort = { key: null, direction: "asc" };
 
   updateHeader();
+  renderHighlightMenu();
   renderTable();
 
   if (state.rows.length === 0) {
     setStatus("По выбранным параметрам данные не найдены.");
   } else {
-    setStatus(`Загружено товаров: ${state.rows.length}.`);
+    setStatus(`Загружено товаров: ${state.rows.length}.`, false, true);
   }
 }
 
@@ -367,12 +382,15 @@ function renderTableHead() {
   const suppliers = getResponseSuppliers();
   const hasSupplierGroups = suppliers.length > 0;
 
-  baseColumns.forEach((column) => {
+  baseColumns.forEach((column, columnIndex) => {
     const groupTh = document.createElement("th");
     groupTh.rowSpan = hasSupplierGroups ? 2 : 1;
     groupTh.dataset.columnId = column.key;
     groupTh.className = "resizable-header";
-    groupTh.style.width = `${getColumnWidth(column.key, column.type)}px`;
+    setColumnWidthStyle(groupTh, getColumnWidth(column.key, column.type));
+    if (hasSupplierGroups && columnIndex === baseColumns.length - 1) {
+      groupTh.classList.add("group-divider-right");
+    }
 
     const label = document.createElement("span");
     label.textContent = column.label;
@@ -393,7 +411,7 @@ function renderTableHead() {
   suppliers.forEach((supplier, supplierIndex) => {
     const supplierTh = document.createElement("th");
     supplierTh.colSpan = supplierMetricColumns.length;
-    supplierTh.className = "supplier-group";
+    supplierTh.className = "supplier-group group-divider-right";
     if (state.disabledSuppliers.has(supplierIndex)) {
       supplierTh.classList.add("supplier-disabled");
     }
@@ -406,13 +424,16 @@ function renderTableHead() {
     supplierTh.append(button);
     groupRow.append(supplierTh);
 
-    supplierMetricColumns.forEach((column) => {
+    supplierMetricColumns.forEach((column, columnIndex) => {
       const columnId = supplierColumnId(supplierIndex, column.key);
       const th = document.createElement("th");
       th.className = "resizable-header";
       th.dataset.columnId = columnId;
-      th.style.width = `${getColumnWidth(columnId, column.type)}px`;
+      setColumnWidthStyle(th, getColumnWidth(columnId, column.type));
       th.textContent = column.label;
+      if (columnIndex === supplierMetricColumns.length - 1) {
+        th.classList.add("group-divider-right");
+      }
       th.append(createResizeHandle(columnId, column.type));
       columnRow.append(th);
     });
@@ -441,13 +462,28 @@ function renderTableBody() {
   rows.forEach((item) => {
     const tr = document.createElement("tr");
     const totals = calculateTotals(item);
+    const rowId = getRowId(item);
+    const isSelected = state.selectedRows.has(rowId);
+    const hasSupplierGroups = getResponseSuppliers().length > 0;
 
-    baseColumns.forEach((column) => {
+    if (isSelected) {
+      tr.classList.add("row-selected");
+    }
+
+    baseColumns.forEach((column, columnIndex) => {
       const td = document.createElement("td");
       const value = getBaseColumnValue(item, totals, column.key);
       td.dataset.columnId = column.key;
       td.textContent = formatCell(value, column.type);
-      td.style.width = `${getColumnWidth(column.key, column.type)}px`;
+      setColumnWidthStyle(td, getColumnWidth(column.key, column.type));
+      applyCellHighlight(td, column.key, isSelected);
+      if (hasSupplierGroups && columnIndex === baseColumns.length - 1) {
+        td.classList.add("group-divider-right");
+      }
+      if (column.key === "names") {
+        td.classList.add("name-cell");
+        td.addEventListener("click", () => toggleRowSelection(rowId));
+      }
       if (column.type !== "text") {
         td.classList.add("number-cell");
       }
@@ -458,12 +494,16 @@ function renderTableBody() {
       const stat = getSupplierStat(item, supplierIndex);
       const disabled = state.disabledSuppliers.has(supplierIndex);
 
-      supplierMetricColumns.forEach((column) => {
+      supplierMetricColumns.forEach((column, columnIndex) => {
         const td = document.createElement("td");
         const columnId = supplierColumnId(supplierIndex, column.key);
         td.dataset.columnId = columnId;
         td.textContent = formatCell(stat?.[column.key], column.type);
-        td.style.width = `${getColumnWidth(columnId, column.type)}px`;
+        setColumnWidthStyle(td, getColumnWidth(columnId, column.type));
+        applyCellHighlight(td, `supplierMetric:${column.key}`, isSelected);
+        if (columnIndex === supplierMetricColumns.length - 1) {
+          td.classList.add("group-divider-right");
+        }
         if (column.type !== "text") {
           td.classList.add("number-cell");
         }
@@ -524,10 +564,10 @@ function getSortedRows() {
   });
 }
 
-function calculateTotals(item) {
+function calculateTotals(item, disabledSuppliers = state.disabledSuppliers) {
   const enabledStats = getResponseSuppliers()
     .map((supplier, index) => getSupplierStat(item, index))
-    .filter((stat, index) => stat && !state.disabledSuppliers.has(index));
+    .filter((stat, index) => stat && !disabledSuppliers.has(index));
 
   return {
     total_diffstat: sumValues(enabledStats, "diffstat"),
@@ -601,9 +641,227 @@ function formatDate(timestamp) {
   return new Intl.DateTimeFormat("ru-RU").format(new Date(timestamp * 1000));
 }
 
-function setStatus(message, isError = false) {
-  els.statusPanel.textContent = message;
+function setStatus(message, isError = false, showActions = false) {
+  els.statusText.textContent = message;
   els.statusPanel.classList.toggle("error", isError);
+  els.highlightButton.hidden = !showActions;
+  els.saveCsvButton.disabled = !showActions;
+  if (!showActions) {
+    els.highlightMenu.hidden = true;
+    els.csvMenu.hidden = true;
+  }
+}
+
+function toggleCsvMenu(event) {
+  event.stopPropagation();
+  if (els.saveCsvButton.disabled) return;
+  els.csvMenu.hidden = !els.csvMenu.hidden;
+  els.highlightMenu.hidden = true;
+}
+
+function handleCsvMenuClick(event) {
+  const button = event.target.closest("[data-export-mode]");
+  if (!button) return;
+  exportCsv(button.dataset.exportMode);
+  els.csvMenu.hidden = true;
+}
+
+function toggleHighlightMenu(event) {
+  event.stopPropagation();
+  els.highlightMenu.hidden = !els.highlightMenu.hidden;
+  els.csvMenu.hidden = true;
+}
+
+function closeFloatingMenus(event) {
+  if (!event.target.closest(".dropdown")) {
+    els.csvMenu.hidden = true;
+  }
+  if (!event.target.closest(".highlight-control")) {
+    els.highlightMenu.hidden = true;
+  }
+}
+
+function renderHighlightMenu() {
+  els.highlightMenu.innerHTML = "";
+
+  appendHighlightSection("Общие колонки");
+  baseColumns.forEach((column) => {
+    appendHighlightOption({
+      id: column.key,
+      label: column.label,
+    });
+  });
+
+  appendHighlightSection("Поставщики");
+  supplierMetricColumns.forEach((column) => {
+    appendHighlightOption({
+      id: `supplierMetric:${column.key}`,
+      label: `Поставщики / ${column.label}`,
+    });
+  });
+}
+
+function appendHighlightSection(title) {
+  const heading = document.createElement("div");
+  heading.className = "highlight-menu-title";
+  heading.textContent = title;
+  els.highlightMenu.append(heading);
+}
+
+function appendHighlightOption({ id, label }) {
+  const row = document.createElement("div");
+  row.className = "highlight-option";
+
+  const labelEl = document.createElement("label");
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = state.columnHighlights.has(id);
+
+  const text = document.createElement("span");
+  text.textContent = label;
+
+  const color = document.createElement("input");
+  color.type = "color";
+  color.value = state.columnHighlights.get(id) || DEFAULT_HIGHLIGHT_COLOR;
+
+  checkbox.addEventListener("change", () => {
+    if (checkbox.checked) {
+      state.columnHighlights.set(id, color.value);
+    } else {
+      state.columnHighlights.delete(id);
+    }
+    renderTableBody();
+  });
+
+  color.addEventListener("input", () => {
+    if (!checkbox.checked) {
+      checkbox.checked = true;
+    }
+    state.columnHighlights.set(id, color.value);
+    renderTableBody();
+  });
+
+  labelEl.append(checkbox, text);
+  row.append(labelEl, color);
+  els.highlightMenu.append(row);
+}
+
+function applyCellHighlight(cell, highlightId, rowSelected) {
+  if (rowSelected) return;
+  const color = state.columnHighlights.get(highlightId);
+  if (color) {
+    cell.style.backgroundColor = color;
+  }
+}
+
+function toggleRowSelection(rowId) {
+  if (state.selectedRows.has(rowId)) {
+    state.selectedRows.delete(rowId);
+  } else {
+    state.selectedRows.add(rowId);
+  }
+  renderTableBody();
+}
+
+function getRowId(item) {
+  return [item.brand, item.articul, item.names, item.category]
+    .map((value) => String(value ?? ""))
+    .join("\u001f");
+}
+
+function exportCsv(mode) {
+  if (!state.response) return;
+
+  const rawMode = mode === "raw";
+  const disabledSuppliers = rawMode ? new Set() : state.disabledSuppliers;
+  const supplierIndexes = getCsvSupplierIndexes(rawMode);
+  let rows = state.response.items || [];
+
+  if (mode === "edited-highlighted" && state.selectedRows.size > 0) {
+    rows = rows.filter((item) => state.selectedRows.has(getRowId(item)));
+  }
+
+  const csvRows = [];
+  csvRows.push(getCsvHeaders(supplierIndexes));
+
+  rows.forEach((item) => {
+    const totals = calculateTotals(item, disabledSuppliers);
+    const values = [];
+
+    baseColumns.forEach((column) => {
+      values.push(getBaseColumnValue(item, totals, column.key));
+    });
+
+    supplierIndexes.forEach((supplierIndex) => {
+      const stat = getSupplierStat(item, supplierIndex);
+      supplierMetricColumns.forEach((column) => {
+        values.push(stat?.[column.key] ?? "");
+      });
+    });
+
+    csvRows.push(values);
+  });
+
+  const csv = "\ufeff" + csvRows.map((row) => row.map(escapeCsvValue).join(";")).join("\n");
+  downloadCsv(csv, getCsvFileName(mode));
+}
+
+function getCsvSupplierIndexes(includeAll) {
+  return getResponseSuppliers()
+    .map((supplier, index) => index)
+    .filter((index) => includeAll || !state.disabledSuppliers.has(index));
+}
+
+function getCsvHeaders(supplierIndexes) {
+  const headers = baseColumns.map((column) => column.label);
+  supplierIndexes.forEach((supplierIndex) => {
+    const supplier = getResponseSuppliers()[supplierIndex];
+    supplierMetricColumns.forEach((column) => {
+      headers.push(`${supplier.name} / ${column.label}`);
+    });
+  });
+  return headers;
+}
+
+function escapeCsvValue(value) {
+  if (value === null || value === undefined) return "";
+  const stringValue = String(value);
+  if (/[;"\n\r]/.test(stringValue)) {
+    return `"${stringValue.replaceAll('"', '""')}"`;
+  }
+  return stringValue;
+}
+
+function downloadCsv(csv, filename) {
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function getCsvFileName(mode) {
+  const category = sanitizeFilePart(state.response?.category || "all");
+  const from = formatDateForFile(state.response?.date_from);
+  const to = formatDateForFile(state.response?.date_to);
+  return `stats-${mode}-${category}-${from}-${to}.csv`;
+}
+
+function sanitizeFilePart(value) {
+  return String(value).replace(/[^a-zA-Z0-9а-яА-Я_-]+/g, "-").replace(/^-+|-+$/g, "") || "value";
+}
+
+function formatDateForFile(timestamp) {
+  if (!timestamp) return "no-date";
+  const date = new Date(timestamp * 1000);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 async function fetchJson(url, fallback) {
@@ -705,8 +963,10 @@ function createResizeHandle(columnId, type) {
 
 function handleResizeMove(event) {
   if (!state.resizing) return;
-  const minWidth = state.resizing.type === "text" ? TEXT_MIN_WIDTH : NUMBER_MIN_WIDTH;
-  const nextWidth = Math.max(minWidth, Math.round(state.resizing.startWidth + event.clientX - state.resizing.startX));
+  const nextWidth = Math.max(
+    MIN_COLUMN_WIDTH,
+    Math.round(state.resizing.startWidth + event.clientX - state.resizing.startX)
+  );
   state.columnWidths.set(state.resizing.columnId, nextWidth);
   applyColumnWidth(state.resizing.columnId, nextWidth);
 }
@@ -719,8 +979,14 @@ function stopResize() {
 
 function applyColumnWidth(columnId, width) {
   document.querySelectorAll(`[data-column-id="${CSS.escape(columnId)}"]`).forEach((cell) => {
-    cell.style.width = `${width}px`;
+    setColumnWidthStyle(cell, width);
   });
+}
+
+function setColumnWidthStyle(element, width) {
+  element.style.width = `${width}px`;
+  element.style.minWidth = `${width}px`;
+  element.style.maxWidth = `${width}px`;
 }
 
 function getSortIndicator(key) {

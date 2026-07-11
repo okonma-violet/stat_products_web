@@ -5,10 +5,12 @@
   --panel-soft: #f9fafb;
   --line: #d8dee6;
   --line-strong: #bcc6d2;
+  --group-divider: #7b8794;
   --text: #1f2933;
   --muted: #667085;
   --accent: #2563eb;
   --accent-hover: #1d4ed8;
+  --row-selected: #dff5df;
   --danger: #b42318;
   --shadow: 0 14px 40px rgba(15, 23, 42, 0.14);
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -45,6 +47,22 @@ select {
   backdrop-filter: blur(10px);
 }
 
+.header-brand {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  min-width: 0;
+}
+
+.header-logo {
+  width: auto;
+  height: auto;
+  max-height: 54px;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
 .header-title {
   min-width: 0;
 }
@@ -66,6 +84,7 @@ h1 {
 }
 
 .header-controls {
+  position: relative;
   display: flex;
   align-items: end;
   gap: 12px;
@@ -98,6 +117,12 @@ input[type="date"] {
   cursor: pointer;
 }
 
+.primary-button:disabled,
+.secondary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .primary-button {
   min-height: 38px;
   padding: 8px 14px;
@@ -117,6 +142,45 @@ input[type="date"] {
   color: var(--text);
 }
 
+.small-button {
+  min-height: 30px;
+  padding: 5px 10px;
+  font-size: 13px;
+}
+
+.dropdown,
+.highlight-control {
+  position: relative;
+}
+
+.dropdown-menu,
+.highlight-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  min-width: 190px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.dropdown-menu button {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  padding: 9px 12px;
+  text-align: left;
+}
+
+.dropdown-menu button:hover {
+  background: #eef3f8;
+}
+
 .icon-button {
   width: 34px;
   height: 34px;
@@ -131,6 +195,11 @@ input[type="date"] {
 }
 
 .status-panel {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 12px;
   padding: 10px 12px;
   border: 1px solid var(--line);
@@ -138,6 +207,55 @@ input[type="date"] {
   background: var(--panel);
   color: var(--muted);
   font-size: 14px;
+}
+
+#statusText {
+  min-width: 0;
+}
+
+.highlight-menu {
+  min-width: 310px;
+  max-height: 360px;
+  overflow: auto;
+  padding: 8px;
+}
+
+.highlight-menu-title {
+  margin: 6px 4px 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.highlight-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 38px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+}
+
+.highlight-option label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.highlight-option span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.highlight-option input[type="color"] {
+  width: 34px;
+  height: 28px;
+  padding: 1px;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: #fff;
 }
 
 .status-panel.error {
@@ -202,9 +320,26 @@ input[type="date"] {
   background: #f7fbff;
 }
 
+.stats-table tbody tr.row-selected td,
+.stats-table tbody tr.row-selected:hover td {
+  background: var(--row-selected) !important;
+}
+
+.name-cell {
+  cursor: pointer;
+}
+
+.name-cell:hover {
+  text-decoration: underline;
+}
+
 .stats-table .number-cell {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.group-divider-right {
+  border-right: 3px solid var(--group-divider) !important;
 }
 
 .sortable {
@@ -368,7 +503,27 @@ input[type="date"] {
     min-width: 0;
   }
 
+  .header-logo {
+    max-height: 50px;
+  }
+
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .status-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .highlight-control,
+  .highlight-control .small-button {
+    width: 100%;
+  }
+
+  .highlight-menu {
+    left: 0;
+    right: auto;
+    min-width: min(310px, 100%);
   }
 }
