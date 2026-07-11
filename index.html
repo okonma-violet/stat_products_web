@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Статистика движения товара</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="header-title">
+        <h1>Статистика движения товара</h1>
+        <div class="header-meta" aria-live="polite">
+          <span id="periodLabel">Период: не выбран</span>
+          <span id="categoryLabel">Категория: не выбрана</span>
+        </div>
+      </div>
+
+      <div class="header-controls">
+        <label class="supplier-filter" for="headerSuppliers">
+          <span>Поставщики</span>
+          <select id="headerSuppliers" disabled>
+            <option>Нет данных</option>
+          </select>
+        </label>
+        <button id="openRequestModal" class="primary-button" type="button">Запросить данные</button>
+      </div>
+    </header>
+
+    <main class="page-shell">
+      <section class="status-panel" id="statusPanel">Данные еще не запрашивались.</section>
+
+      <section class="table-shell" aria-label="Таблица статистики">
+        <div class="table-scroll">
+          <table id="statsTable" class="stats-table">
+            <thead id="tableHead"></thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="requestDialog" class="request-dialog">
+      <form id="requestForm" method="dialog">
+        <div class="dialog-header">
+          <h2>Получение данных</h2>
+          <button id="closeRequestModal" class="icon-button" type="button" aria-label="Закрыть">×</button>
+        </div>
+
+        <div class="form-grid">
+          <label class="field">
+            <span>Категория</span>
+            <select id="categorySelect" required>
+              <option value="">Загрузка...</option>
+            </select>
+          </label>
+
+          <fieldset class="supplier-field">
+            <legend>Поставщики</legend>
+            <div id="supplierList" class="supplier-list">Загрузка...</div>
+          </fieldset>
+
+          <label class="field">
+            <span>Дата от</span>
+            <input id="dateFrom" type="date" required>
+          </label>
+
+          <label class="field">
+            <span>Дата до</span>
+            <input id="dateTo" type="date" required>
+          </label>
+        </div>
+
+        <p id="formError" class="form-error" aria-live="assertive"></p>
+
+        <div class="dialog-actions">
+          <button class="secondary-button" id="cancelRequest" type="button">Отмена</button>
+          <button class="primary-button" type="submit">Получить</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
