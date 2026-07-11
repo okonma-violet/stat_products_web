@@ -21,12 +21,13 @@
       </div>
 
       <div class="header-controls">
-        <label class="supplier-filter" for="headerSuppliers">
-          <span>Поставщики</span>
-          <select id="headerSuppliers" disabled>
-            <option>Нет данных</option>
-          </select>
-        </label>
+        <div class="header-suppliers-popover">
+          <button id="headerSuppliersButton" class="header-suppliers-button" type="button" disabled>
+            <span>Список</span>
+            <span>поставщиков</span>
+          </button>
+          <div id="headerSuppliersList" class="header-suppliers-list" hidden>Нет данных</div>
+        </div>
         <div class="dropdown">
           <button id="saveCsvButton" class="secondary-button" type="button" disabled>Сохранить CSV</button>
           <div id="csvMenu" class="dropdown-menu" hidden>

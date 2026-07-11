@@ -147,7 +147,8 @@ const state = {
 const els = {
   periodLabel: document.querySelector("#periodLabel"),
   categoryLabel: document.querySelector("#categoryLabel"),
-  headerSuppliers: document.querySelector("#headerSuppliers"),
+  headerSuppliersButton: document.querySelector("#headerSuppliersButton"),
+  headerSuppliersList: document.querySelector("#headerSuppliersList"),
   saveCsvButton: document.querySelector("#saveCsvButton"),
   csvMenu: document.querySelector("#csvMenu"),
   openRequestModal: document.querySelector("#openRequestModal"),
@@ -187,6 +188,7 @@ function init() {
 
 function bindEvents() {
   els.openRequestModal.addEventListener("click", openRequestDialog);
+  els.headerSuppliersButton.addEventListener("click", toggleHeaderSuppliersList);
   els.saveCsvButton.addEventListener("click", toggleCsvMenu);
   els.csvMenu.addEventListener("click", handleCsvMenuClick);
   els.highlightButton.addEventListener("click", toggleHighlightMenu);
@@ -195,6 +197,7 @@ function bindEvents() {
   els.requestForm.addEventListener("submit", handleRequestSubmit);
 
   document.addEventListener("click", closeFloatingMenus);
+  document.addEventListener("keydown", handleDocumentKeydown);
   document.addEventListener("mousemove", handleResizeMove);
   document.addEventListener("mouseup", stopResize);
 }
@@ -345,28 +348,30 @@ function updateHeader() {
   if (!state.response) {
     els.periodLabel.textContent = "Период: не выбран";
     els.categoryLabel.textContent = "Категория: не выбрана";
-    els.headerSuppliers.innerHTML = "<option>Нет данных</option>";
-    els.headerSuppliers.disabled = true;
+    els.headerSuppliersList.textContent = "Нет данных";
+    els.headerSuppliersList.hidden = true;
+    els.headerSuppliersButton.disabled = true;
     return;
   }
 
   els.periodLabel.textContent = `Период: ${formatDate(state.response.date_from)} - ${formatDate(state.response.date_to)}`;
   els.categoryLabel.textContent = `Категория: ${state.response.category || "не выбрана"}`;
 
-  els.headerSuppliers.innerHTML = "";
+  els.headerSuppliersList.innerHTML = "";
   if (state.response.suppliers.length === 0) {
-    els.headerSuppliers.innerHTML = "<option>Нет данных</option>";
-    els.headerSuppliers.disabled = true;
+    els.headerSuppliersList.textContent = "Нет данных";
+    els.headerSuppliersList.hidden = true;
+    els.headerSuppliersButton.disabled = true;
     return;
   }
 
   state.response.suppliers.forEach((supplier) => {
-    const option = document.createElement("option");
-    option.value = String(supplier.id);
-    option.textContent = supplier.name;
-    els.headerSuppliers.append(option);
+    const item = document.createElement("div");
+    item.className = "header-supplier-item";
+    item.textContent = supplier.name;
+    els.headerSuppliersList.append(item);
   });
-  els.headerSuppliers.disabled = false;
+  els.headerSuppliersButton.disabled = false;
 }
 
 function renderTable() {
@@ -657,6 +662,7 @@ function toggleCsvMenu(event) {
   if (els.saveCsvButton.disabled) return;
   els.csvMenu.hidden = !els.csvMenu.hidden;
   els.highlightMenu.hidden = true;
+  els.headerSuppliersList.hidden = true;
 }
 
 function handleCsvMenuClick(event) {
@@ -670,6 +676,15 @@ function toggleHighlightMenu(event) {
   event.stopPropagation();
   els.highlightMenu.hidden = !els.highlightMenu.hidden;
   els.csvMenu.hidden = true;
+  els.headerSuppliersList.hidden = true;
+}
+
+function toggleHeaderSuppliersList(event) {
+  event.stopPropagation();
+  if (els.headerSuppliersButton.disabled) return;
+  els.headerSuppliersList.hidden = !els.headerSuppliersList.hidden;
+  els.csvMenu.hidden = true;
+  els.highlightMenu.hidden = true;
 }
 
 function closeFloatingMenus(event) {
@@ -679,6 +694,16 @@ function closeFloatingMenus(event) {
   if (!event.target.closest(".highlight-control")) {
     els.highlightMenu.hidden = true;
   }
+  if (!event.target.closest(".header-suppliers-popover")) {
+    els.headerSuppliersList.hidden = true;
+  }
+}
+
+function handleDocumentKeydown(event) {
+  if (event.key !== "Escape") return;
+  els.csvMenu.hidden = true;
+  els.highlightMenu.hidden = true;
+  els.headerSuppliersList.hidden = true;
 }
 
 function renderHighlightMenu() {
