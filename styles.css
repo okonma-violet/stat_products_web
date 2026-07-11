@@ -186,12 +186,6 @@ input[type="date"] {
   color: var(--text);
 }
 
-.small-button {
-  min-height: 30px;
-  padding: 5px 10px;
-  font-size: 13px;
-}
-
 .dropdown,
 .highlight-control {
   position: relative;
@@ -242,7 +236,7 @@ input[type="date"] {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px;
   margin-bottom: 12px;
   padding: 10px 12px;
@@ -254,6 +248,7 @@ input[type="date"] {
 }
 
 #statusText {
+  flex: 1;
   min-width: 0;
 }
 
@@ -559,11 +554,6 @@ input[type="date"] {
   .status-panel {
     align-items: stretch;
     flex-direction: column;
-  }
-
-  .highlight-control,
-  .highlight-control .small-button {
-    width: 100%;
   }
 
   .highlight-menu {

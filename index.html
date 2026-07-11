@@ -28,6 +28,10 @@
           </button>
           <div id="headerSuppliersList" class="header-suppliers-list" hidden>Нет данных</div>
         </div>
+        <div class="highlight-control">
+          <button id="highlightButton" class="secondary-button" type="button" hidden>Выделить</button>
+          <div id="highlightMenu" class="highlight-menu" hidden></div>
+        </div>
         <div class="dropdown">
           <button id="saveCsvButton" class="secondary-button" type="button" disabled>Сохранить CSV</button>
           <div id="csvMenu" class="dropdown-menu" hidden>
@@ -43,10 +47,6 @@
     <main class="page-shell">
       <section class="status-panel" id="statusPanel">
         <span id="statusText">Данные еще не запрашивались.</span>
-        <div class="highlight-control">
-          <button id="highlightButton" class="secondary-button small-button" type="button" hidden>Выделить</button>
-          <div id="highlightMenu" class="highlight-menu" hidden></div>
-        </div>
       </section>
 
       <section class="table-shell" aria-label="Таблица статистики">
