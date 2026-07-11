@@ -1,8 +1,8 @@
 "use strict";
 
-const CATEGORIES_URL = "";
-const SUPPLIERS_URL = "";
-const STATISTICS_URL = "";
+const CATEGORIES_URL = "/back/categories_list";
+const SUPPLIERS_URL = "/back/suppliers_list";
+const STATISTICS_URL = "/back/products_moving";
 
 const MIN_COLUMN_WIDTH = 8;
 const DEFAULT_HIGHLIGHT_COLOR = "#fff2a8";
